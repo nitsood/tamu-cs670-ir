@@ -46,9 +46,10 @@ def parse_json_training_set(filename, class_name):
   num_results = 0
   for line in lines:
     js = json.loads(line)
-    num_results += collect_training_set(js['d']['results'], class_name)
-  prob = float(1)/num_results
-  p_prior[class_name] = math.fabs(math.log(prob, 2))
+    collect_training_set(js['d']['results'], class_name)
+  #prob = float(1)/num_results
+  #p_prior[class_name] = math.log(prob, 2)
+  #p_prior[class_name] = prob
   return
 
 def parse_json_test_set(filename, actual_class):
@@ -83,7 +84,7 @@ def collect_training_set(results, class_name):
     doc_ctr += 1
   #print 'collected {0} results'.format(len(results))
   #print 'collected {0} ids'.format(len(ids))
-  return len(results)
+  return
 
 def collect_test_set(results, actual_class):
   global test_ids
@@ -111,6 +112,12 @@ def collect_test_set(results, actual_class):
   #print 'collected {0} ids'.format(len(test_ids))
   return
 
+def compute_prior():
+  cl = classes.keys()
+  n = float(doc_ctr)
+  for c in cl:
+    p_prior[c] = math.log((len(classes[c])/n), 2)
+
 ################ Classification ################
 
 def classify_naive_bayes():
@@ -118,16 +125,18 @@ def classify_naive_bayes():
   v = len(vocab)
   for td in tdkeys:
     terms = test_docs[td]
-    max_prob = -1.0
+    max_prob = float('-inf')
     predicted_class = ''
     for cl in classes.keys():
       prob = p_prior[cl]
-      print 'class: {0}'.format(cl)
+      print 'class: {0} and prior: {1}'.format(cl, prob)
       for t in terms:
         numer = float(class_tf[cl][t]+1)
         denom = class_tokens[cl]+v
-        prob += math.fabs(math.log(numer/denom, 2))
-      print 'probability: {0}, max probability: {1}'.format(prob, max_prob)
+        #prob += math.log(numer/denom, 2)
+        #print '{0}/{1}'.format(numer, denom)
+        prob += math.log(numer/denom, 2)
+      #print 'probability: {0}, max probability: {1}'.format(prob, max_prob)
       if prob >= max_prob:
         max_prob = prob
         predicted_class = cl
@@ -264,21 +273,22 @@ def test_politics():
 
 def test_classify():
   global doc_ctr
-  f = 'nb_train1.json'
-  g = 'nb_train2.json'
+  f = './classification_tests/t1/nb_train1.json'
+  g = './classification_tests/t1/nb_train2.json'
   doc_ctr = 0
-  parse_json_training_set(f, 'China')
-  parse_json_training_set(g, 'Not China')
+  parse_json_training_set(f, 'C')
+  parse_json_training_set(g, 'NC')
+  compute_prior()
   doc_ctr = 0
-  f = 'nb_test.json'
-  parse_json_test_set(f, 'Not China')
+  f = './classification_tests/t1/nb_test.json'
+  parse_json_test_set(f, 'C')
   classify_naive_bayes()
   classification_stats()
   return
 
 def main():
-  test_classify()
-  return
+  #test_classify()
+  #return
 
   global doc_ctr
   #print 'Entertainment -----------'
@@ -291,6 +301,7 @@ def main():
   parse_json_training_set('entertainment.json', 'rt_Entertainment')
   parse_json_training_set('business.json', 'rt_Business')
   parse_json_training_set('politics.json', 'rt_Politics')
+  compute_prior()
   print 'Number of training ids: {0}'.format(len(ids))
   print 'Number of training docs: {0}'.format(len(docs.keys()))
 
